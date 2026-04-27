@@ -548,36 +548,6 @@
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-soft);
   }
-
-  /* ═══════════════════════════════════════════════
-     GIF PICKER
-  ═══════════════════════════════════════════════ */  
-  #gif-picker .btn-ghost { background:none; border:none; color:var(--text-dim); cursor:pointer; }
-  #gif-picker .btn-ghost:hover { color:var(--text-main); }
-  .gif-item {
-    position: relative;
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    border: 2px solid transparent;
-    transition: border-color 0.2s;
-  }
-  .gif-item:hover { border-color: var(--accent); }
-  .gif-item img { width:100%; height:100px; object-fit:cover; display:block; }
-  .favorite-btn {
-    position: absolute;
-    top: 4px; right: 4px;
-    background: rgba(0,0,0,0.5);
-    border: none;
-    color: white;
-    border-radius: 50%;
-    width: 24px; height: 24px;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
   
   /* ═══════════════════════════════════════════════
      MEMBER LIST (RIGHT SIDEBAR)
@@ -1195,7 +1165,6 @@ body.theme-whitepink {
         <textarea id="chat-input" placeholder="Message..." rows="1" onkeydown="handleChatKey(event)" oninput="applyCensorInput(); handleTypingInput(); autoResizeTextarea(this); updateCharCount()"></textarea>
         <span id="char-count" style="font-size:11px;color:var(--text-muted);align-self:flex-end;padding-bottom:10px;flex-shrink:0;"></span>
         <button id="emoji-btn" class="emoji-btn" type="button" title="Add emoji">😊</button>
-        <button id="gif-btn" class="emoji-btn" type="button" title="GIFs">🎞️</button>
         <div id="emoji-picker-container" class="emoji-picker-container hidden"></div>
       </div>
     </div>
@@ -1216,25 +1185,6 @@ body.theme-whitepink {
   </div>
 </aside>
 
-<!-- Fixed GIF Picker: no duplicate ID, backdrop click to close -->
-<div id="gif-picker" class="modal-overlay hidden" onclick="if(event.target===this) this.classList.add('hidden')">
-  <div class="modal" style="width:680px; height:480px; display:flex; flex-direction:column;">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <h3>GIF Picker</h3>
-      <div>
-        <button id="gif-tab-search" class="btn-ghost" style="color:var(--accent);">Search</button>
-        <button id="gif-tab-favorites" class="btn-ghost">Favorites</button>
-      </div>
-      <span style="cursor:pointer; font-size:24px;" onclick="document.getElementById('gif-picker').classList.add('hidden')">×</span>
-    </div>
-    <input type="text" id="gif-search" placeholder="Search Tenor" style="width:100%; padding:10px; margin:10px 0; background:var(--bg-input); color:var(--text-main); border:1px solid var(--border); border-radius:var(--radius-sm);">
-    <div id="gif-results" style="flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); gap:8px;">
-      <!-- GIFs appear here -->
-    </div>
-  </div>
-</div>
-  
-  
 <div id="modal-channel" class="modal-overlay hidden">
   <div class="modal">
     <h3>Create Channel</h3>
@@ -1656,7 +1606,6 @@ body.theme-whitepink {
     updateOwnStatusDisplay(currentUser.statusText);
     setupPresence(userData);
     initMemberList();
-    loadGifFavorites();
     startTypingCleanup();
 
     const createBtn = document.getElementById('create-channel-btn');
@@ -1793,116 +1742,6 @@ body.theme-whitepink {
     const newRef = window.fbPush(window.fbRef(window.db, 'channels'));
     window.fbSet(newRef, { name: name });
   }
-
-const GIF_API_KEY = 'LDv6pTnNbJRGtqTGTOL8eLnN6n3LusSwc8DC5FRSGLd26ptX0Uu311TUiHcFvhLG';
-let gifFavorites = [];                   
-let currentGifTab = 'search';                
-
-// Load favorites from Firebase
-function loadGifFavorites() {
-  if (!currentUser) return;
-  const favRef = window.fbRef(window.db, `users/${currentUser.uid}/favoriteGifs`);
-  window.fbOnValue(favRef, (snap) => {
-    gifFavorites = snap.val() || [];
-  }, { onlyOnce: true });
-}
-
-// Toggle favorite
-async function toggleFavorite(url) {
-  if (!currentUser) return;
-  const index = gifFavorites.indexOf(url);
-  if (index === -1) {
-    gifFavorites.push(url);
-  } else {
-    gifFavorites.splice(index, 1);
-  }
-  await window.fbSet(window.fbRef(window.db, `users/${currentUser.uid}/favoriteGifs`), gifFavorites);
-  if (currentGifTab === 'favorites') renderGifFavorites();
-}
-
-// Search Klipy – with error handling
-async function searchGifs(query) {
-  try {
-    const url = `https://api.klipy.com/v1/gifs/search?q=${encodeURIComponent(query)}&limit=20&key=${GIF_API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    return data?.data || [];
-  } catch (err) {
-    console.error('GIF search failed:', err);
-    return null;
-  }
-}
-
-// Get trending – with error handling
-async function getTrending() {
-  try {
-    const url = `https://api.klipy.com/v1/gifs/trending?limit=20&key=${GIF_API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    return data?.data || [];
-  } catch (err) {
-    console.error('Trending GIFs failed:', err);
-    return null;
-  }
-}
-  
-// Render grid – shows "no results" or "error" when appropriate
-function renderGifGrid(gifs) {
-  const container = document.getElementById('gif-results');
-  if (!gifs) {
-    container.innerHTML = '<p style="color:var(--text-dim);text-align:center;margin-top:40px;">Failed to load GIFs.</p>';
-    return;
-  }
-  if (!gifs.length) {
-    container.innerHTML = '<p style="color:var(--text-dim);text-align:center;margin-top:40px;">No results found.</p>';
-    return;
-  }
-
-  container.innerHTML = '';
-  gifs.forEach(gif => {
-    const url = gif.url;                      // KLIPY: direct url field (adjust if API response differs)
-    if (!url) return;
-    const isFav = gifFavorites.includes(url);
-    const div = document.createElement('div');
-    div.className = 'gif-item';
-    div.innerHTML = `<img src="${url}" alt="">`;
-    const favBtn = document.createElement('button');
-    favBtn.className = 'favorite-btn';
-    favBtn.innerHTML = isFav ? '❤️' : '🤍';
-    favBtn.onclick = (e) => { e.stopPropagation(); toggleFavorite(url); };
-    div.appendChild(favBtn);
-    div.onclick = () => insertGifUrl(url);
-    container.appendChild(div);
-  });
-}
-
-function renderGifFavorites() {
-  const container = document.getElementById('gif-results');
-  if (!gifFavorites.length) {
-    container.innerHTML = '<p style="color:var(--text-dim);text-align:center;margin-top:40px;">No favorites yet.</p>';
-    return;
-  }
-  container.innerHTML = '';
-  gifFavorites.forEach(url => {
-    const isFav = true;
-    const div = document.createElement('div');
-    div.className = 'gif-item';
-    div.innerHTML = `<img src="${url}" alt="">`;
-    const favBtn = document.createElement('button');
-    favBtn.className = 'favorite-btn';
-    favBtn.innerHTML = '❤️';
-    favBtn.onclick = (e) => { e.stopPropagation(); toggleFavorite(url); };
-    div.appendChild(favBtn);
-    div.onclick = () => insertGifUrl(url);
-    container.appendChild(div);
-  });
-}
-
-function insertGifUrl(url) {
-  const input = document.getElementById('chat-input');
-  input.value += `![](${url})`;   // Markdown image syntax
-  document.getElementById('gif-picker').classList.add('hidden');
-}
   
   function switchChannel(id, name) {
     cancelEdit();
@@ -2952,49 +2791,6 @@ function insertGifUrl(url) {
         reactingToMessageId = null;
       }
     });
-
-const gifBtn = document.getElementById('gif-btn');
-const gifPicker = document.getElementById('gif-picker');
-const gifSearch = document.getElementById('gif-search');
-const tabSearch = document.getElementById('gif-tab-search');
-const tabFav = document.getElementById('gif-tab-favorites');
-
-gifBtn.addEventListener('click', async (e) => {
-  e.stopPropagation();
-  gifPicker.classList.remove('hidden');
-  currentGifTab = 'search';
-  tabSearch.style.color = 'var(--accent)';
-  tabFav.style.color = 'var(--text-dim)';
-  gifSearch.value = '';
-  const trending = await getTrending();
-  renderGifGrid(trending);
-});
-
-gifSearch.addEventListener('input', async () => {
-  const query = gifSearch.value.trim();
-  if (!query) {
-    const trending = await getTrending();
-    renderGifGrid(trending);
-    return;
-  }
-  const results = await searchGifs(query);
-  renderGifGrid(results);
-});
-
-tabSearch.addEventListener('click', () => {
-  currentGifTab = 'search';
-  tabSearch.style.color = 'var(--accent)';
-  tabFav.style.color = 'var(--text-dim)';
-  gifSearch.value = '';
-  getTrending().then(renderGifGrid);
-});
-
-tabFav.addEventListener('click', () => {
-  currentGifTab = 'favorites';
-  tabSearch.style.color = 'var(--text-dim)';
-  tabFav.style.color = 'var(--accent)';
-  renderGifFavorites();
-});
     
     setTimeout(() => {
       if (window.auth) {
