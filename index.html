@@ -158,12 +158,12 @@
   /* ═══════════════════════════════════════════════
      COLOR PICKER — shared grid + swatch styles
   ═══════════════════════════════════════════════ */
-  .color-grid {
-    display: flex;
-    flex-wrap: wrap;
+ .color-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
     gap: 10px;
     margin-bottom: 20px;
-  }
+}
 
   .color-swatch {
     width: 44px;
@@ -1436,10 +1436,23 @@ body.theme-whitepink {
   loadCensorList();
   setInterval(loadCensorList, 30 * 60 * 1000);
 
-  const PRESET_COLORS = [
-    '#FF0000', '#FF4500', '#FF8C00', '#FFD700', '#FFFF00',
-    '#ADFF2F', '#008000', '#00CED1', '#0000FF', '#4B0082', '#8A2BE2'
-  ];
+ const PRESET_COLORS = [
+    '#FF0000',   // red
+    '#FF4500',   // orange‑red
+    '#FF8C00',   // dark orange
+    '#FFD700',   // gold
+    '#FFFF00',   // yellow
+    '#ADFF2F',   // green‑yellow
+    '#00FF7F',   // spring green   ← new
+    '#008000',   // green
+    '#00CED1',   // dark turquoise
+    '#1E90FF',   // dodger blue    ← new
+    '#0000FF',   // blue
+    '#4B0082',   // indigo
+    '#9400D3',   // dark violet    ← new
+    '#8A2BE2',   // blue‑violet
+    '#FF1493'    // deep pink      ← new
+];
   const AVATAR_COLORS = PRESET_COLORS;
   
   const ADMIN_UID = "pvc9bzXd4BOhXu45zFg8SUpj5zl1";
@@ -2479,24 +2492,23 @@ body.theme-whitepink {
     });
     
     const customSwatch = document.createElement('div');
-    customSwatch.className = 'color-swatch custom-swatch';
-    if (isSettingsCustomMode) {
-      customSwatch.classList.add('selected');
-      // Show their current custom color as preview in the swatch
-      customSwatch.style.background = settingsSelectedCustomHex || '#FF0000';
-      customSwatch.innerHTML = '';
-    } else {
-      customSwatch.innerHTML = '<i class="fa fa-plus" style="font-size:16px;"></i>';
-    }
-    customSwatch.onclick = () => {
-      grid.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-      customSwatch.classList.add('selected');
-      settingsSelectedColor = -1;
-      isSettingsCustomMode = true;
-      rgbPickerContext = 'settings';
-      openCustomColorPickerModal(settingsSelectedCustomHex || '#FF0000');
-    };
-    grid.appendChild(customSwatch);
+customSwatch.className = 'color-swatch custom-swatch';
+if (isSettingsCustomMode) {
+  customSwatch.classList.add('selected');
+  customSwatch.style.background = settingsSelectedCustomHex || '#FF0000';
+} else {
+  customSwatch.style.background = '#3a3d4a';
+}
+customSwatch.innerHTML = '<i class="fa fa-plus" style="font-size:16px;"></i>';
+customSwatch.onclick = () => {
+  grid.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  customSwatch.classList.add('selected');
+  settingsSelectedColor = -1;
+  isSettingsCustomMode = true;
+  rgbPickerContext = 'settings';
+  openCustomColorPickerModal(settingsSelectedCustomHex || '#FF0000');
+};
+grid.appendChild(customSwatch);
   }
 
   function openCustomColorPickerModal(initialHex) {
